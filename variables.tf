@@ -1,95 +1,149 @@
-#------------------------------------------------------------------------------
-# VPC e Nomenclatura Principal
-#------------------------------------------------------------------------------
-variable "vpc_name" {
-  type        = string
-  description = "A base name for the VPC and its resources. Must be unique."
-  validation {
-    condition     = can(regex("^[a-z0-9]([-a-z0-9]*[a-z0-9])?$", var.vpc_name))
-    error_message = "The VPC name must consist of lowercase letters, numbers, and hyphens."
-  }
-}
-
-variable "vpc_description" {
-  type        = string
-  description = "A custom description for the VPC resource."
-  default     = null
-}
-
-#------------------------------------------------------------------------------
-# Controle e Configuração do Subnetpool
-#------------------------------------------------------------------------------
-variable "create_subnetpool" {
+variable "create" {
+  description = "VPC create by module"
   type        = bool
-  description = "If true, a new Subnet Pool will be created. If false, an existing 'subnetpool_id' must be provided."
   default     = true
 }
-
-variable "subnetpool_id" {
+variable "name" {
   type        = string
-  description = "The ID of an existing Subnet Pool to use. Required if 'create_subnetpool' is false."
-  default     = ""
-}
-
-variable "vpc_base_cidr" {
-  type        = string
-  description = "The base CIDR block for the entire VPC, used to create the Subnet Pool. Required if 'create_subnetpool' is true."
-  default     = ""
-}
-
-variable "subnetpool_description" {
-  type        = string
-  description = "A custom description for the Subnet Pool resource."
-  default     = null
-}
-
-#------------------------------------------------------------------------------
-# Configuração de Sub-redes e NAT Gateways para HA
-#------------------------------------------------------------------------------
-variable "availability_zones" {
-  type        = list(string)
-  description = "A list of Availability Zones to create subnets in. HA requires at least two."
+  description = "O nome único para a VPC. Este é o único parâmetro obrigatório."
   validation {
-    condition     = length(var.availability_zones) >= 2
-    error_message = "For High Availability, please provide at least two Availability Zones."
+    condition     = can(regex("^[a-z0-9]([-a-z0-9]*[a-z0-9])?$", var.name))
+    error_message = "O nome da VPC deve consistir em letras minúsculas, números e hífens, e começar e terminar com uma letra ou número."
   }
 }
 
-variable "public_subnet_cidrs" {
-  type        = list(string)
-  description = "A list of CIDR blocks for the public subnets. Must have the same number of elements as 'availability_zones'."
-  default     = []
+variable "description" {
+  type        = string
+  description = "Descrição opcional para a VPC."
+  default     = "VPC adicional"
 }
 
-variable "private_subnet_cidrs" {
-  type        = list(string)
-  description = "A list of CIDR blocks for the private subnets. Must have the same number of elements as 'availability_zones'."
-  default     = []
-}
-
-variable "create_nat_gateways" {
-  type        = bool
-  description = "If true, creates a NAT Gateway in each Availability Zone's public subnet to provide outbound internet access for private subnets."
-  default     = false # Opt-in para evitar custos inesperados
-}
-
-#------------------------------------------------------------------------------
-# Configuração Opcional de Security Groups
-#------------------------------------------------------------------------------
-variable "security_groups" {
-  type = map(object({
-    description           = string
-    disable_default_rules = optional(bool, true)
-    rules = list(object({
-      description      = string
-      direction        = string
-      ethertype        = string
-      port_range_min   = optional(number)
-      port_range_max   = optional(number)
-      protocol         = optional(string)
-      remote_ip_prefix = optional(string)
-    }))
+variable "subnetpool" {
+  type = list(object({
+    name        = string
+    description = string
+    cidr        = string
   }))
-  description = "A map of Security Groups to be created within the VPC. The map key is used as the SG name."
-  default     = {}
+  description = "Configuração do Subnet Pool. Por padrão, cria um pool com um CIDR /16."
+  default = [
+    {
+      name        = "default-subnetpool"
+      description = "Default Subnet Pool"
+      cidr        = "172.31.0.0/16"
+    }
+  ]
+}
+variable "security_group" {
+  type = object({
+    create      = bool
+    name        = string
+    description = string
+    # --- CORREÇÃO APLICADA AQUI ---
+    # Alterado de "rule" para "rules" para corresponder ao bloco default e seguir as boas práticas.
+    rules = list(object({
+      description = string
+      egress      = bool
+      ipv         = number
+      protocol    = string
+      port_min    = number
+      port_max    = number
+      cidr        = string
+    }))
+  })
+  description = "Configuração do Security Group. Por padrão, cria um SG com regras de saída liberadas."
+
+  # O seu bloco default agora está correto e compatível com o 'type' acima.
+  default = {
+    create      = true
+    name        = "default-security-group"
+    description = "Default Security Group"
+    rules = [
+      {
+        description = "Liberação da rede interna"
+        egress      = false
+        ipv         = 4
+        protocol    = "tcp"
+        port_min    = 2
+        port_max    = 65535
+        cidr        = "0.0.0.0/0"
+      },
+      # Regra de saída explícita, necessária porque desabilitamos as regras padrão
+      {
+        description = "Liberado a qualquer serviço da rede internta porta alta"
+        egress      = true
+        ipv         = 4
+        protocol    = "tcp"
+        port_min    = 1
+        port_max    = 65535
+        cidr        = "0.0.0.0/0"
+      },
+      {
+        description = "Liberado a qualquer serviço da rede internta porta alta"
+        egress      = true
+        ipv         = 4
+        protocol    = "udp"
+        port_min    = 1
+        port_max    = 65535
+        cidr        = "0.0.0.0/0"
+      },
+    ]
+  }
+}
+
+variable "subnets" {
+  type = list(object({
+    name              = string
+    cidr_block        = string
+    availability_zone = string
+    subnetpool_name   = string
+    ip_version        = number
+    dns_nameservers   = list(string)
+    description       = string
+  }))
+  description = "Mapa de sub-redes a serem criadas. Por padrão, nenhuma sub-rede é criada."
+  default = [{
+    name              = "public-subnet"
+    cidr_block        = "172.31.1.0/24"
+    availability_zone = "br-se1-a"
+    subnetpool_name   = "default-subnetpool"
+    ip_version        = 4
+    dns_nameservers   = ["8.8.8.8", "8.8.4.4"]
+    description       = "Public subnet"
+    },
+    {
+      name              = "private-subnet"
+      cidr_block        = "172.31.2.0/24"
+      availability_zone = "br-se1-b"
+      subnetpool_name   = "default-subnetpool"
+      ip_version        = 4
+      dns_nameservers   = ["8.8.8.8", "8.8.4.4"]
+      description       = "Private subnet"
+  }]
+}
+
+variable "nat_gateway" {
+  type = object({
+    create            = bool
+    name              = string
+    description       = string
+    availability_zone = list(string)
+  })
+  description = "Configuração do NAT Gateway. Por padrão, não cria nenhum NAT Gateway."
+  default = {
+    create            = false
+    name              = "default-nat-gateway"
+    description       = "Default NAT Gateway"
+    availability_zone = ["br-se1-a", "br-se1-b", "br-se1-c"]
+  }
+}
+
+variable "routes" {
+  type = list(object({
+    port_id           = string
+    cidr_destination  = string
+    availability_zone = string
+    description       = string
+  }))
+  description = "Lista de rotas estáticas a serem criadas. Por padrão, nenhuma rota adicional é criada."
+  default  = []
 }

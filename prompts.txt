@@ -1,0 +1,574 @@
+#################################### GEMINI ##############################################################
+
+Aqui está a versão final e consolidada do prompt de engenharia reversa. Foi adicionado o requisito global de bilinguismo (**en-US** e **pt-BR**) para todas as interfaces de comunicação do módulo: documentação (`README.md`), descrições de variáveis/outputs, mensagens de erro em blocos de `validation` e mensagens de falha em `precondition`/`postcondition`.
+
+---
+
+### Prompt Avançado de Engenharia para Evolução de Módulos IaC
+
+```markdown
+Atue como um Arquiteto de Cloud e Especialista em Engenharia de Confiabilidade de Sites (SRE) sênior, com foco em Infrastructure as Code (IaC) e Governança de TI. O objetivo é analisar a base de código atual do nosso módulo Terraform para a Magalu Cloud (Provider: `MagaluCloud/mgc`) e estruturar um plano de evolução técnica focado em resiliência, compatibilidade, segurança, exaustividade e DX (Developer Experience).
+
+### DIRETRIZ GLOBAL DE IDIOMA (Bilinguismo Obrigatório)
+- Toda e qualquer comunicação do módulo deve suportar nativamente e de forma clara os idiomas Inglês (en-US) e Português (pt-BR). Isto aplica-se a:
+  - Documentação completa no `README.md`.
+  - Atributos `description` de todas as variáveis e outputs.
+  - Mensagens de erro (`error_message`) dentro dos blocos de `validation`, `precondition` e `postcondition`.
+
+Analise o cenário e forneça artefatos concretos e concisos para os seguintes pilares:
+
+### 1. Avaliação de Impacto e Compatibilidade (Upgrade Dinâmico do Provider)
+- Mapeie a transição para a versão mais recente do provider `mgc`. 
+- Identifique potenciais *breaking changes* (recursos depreciados, argumentos modificados, alteração de tipos de dados).
+- Forneça uma matriz de compatibilidade e uma política em Open Policy Agent (OPA/Rego) que impeça o deploy caso recursos ou argumentos depreciados ou inseguros sejam detectados no plano do Terraform (`tfplan.json`).
+
+### 2. Validação Estrita de Contratos (Validation, Precondition e Postcondition)
+- Adicione blocos de `validation` exaustivos em todas as declarações de variáveis onde os parâmetros aceitáveis sejam previsíveis (ex: validação de formato de strings com regex, limites numéricos, restrição por listas de enums permitidas).
+- Implemente blocos de `precondition` e `postcondition` dentro dos recursos (`resource`) e blocos de dados (`data`). O objetivo é validar em tempo de execução (`terraform plan/apply`) se as dependências externas e o estado atual da Magalu Cloud atendem aos pré-requisitos antes do provisionamento, mitigando falhas tardias.
+- Garanta que os blocos de erro exibam mensagens claras nos dois idiomas (ex: "Error: ... / Erro: ...").
+
+### 3. Cobertura Exaustiva do Recurso vs. Configuração Mínima (Defaults Inteligentes)
+- Redesenhe o bloco de recursos (`resource "mgc_..."`) para que ele suporte **100% dos argumentos e blocos aninhados** expostos pela API do provider da Magalu Cloud, utilizando expressões condicionais, `try()`, `can()` e blocos dinâmicos (`dynamic`).
+- Torne o provisionamento do módulo o mais limpo possível para o usuário final, exigindo a definição do **menor número possível de variáveis obrigatórias**.
+- Implemente uma arquitetura baseada em `locals` para fazer o merge de um mapa de configurações *default* seguras da infraestrutura com as customizações opcionais passadas pelo usuário.
+
+### 4. Validação de Idempotência e Provisionamento de Exemplos (Examples Validation)
+- Mapeie o diretório de exemplos (`examples/`) do módulo (ex: `examples/basic`, `examples/complete`).
+- Forneça uma estratégia automatizada utilizando `terraform test` ou scripts em lote para inicializar, planejar e aplicar (`apply`) cada um dos exemplos reais contra a versão mais recente do provider da Magalu Cloud.
+- Os testes dos exemplos devem validar:
+  - **Idempotência:** Garantir que um segundo `terraform apply` subsequente resulte em zero alterações (`No changes.`).
+  - **Diferença de Plano Destrutiva:** Alertar ou falhar o teste se a atualização do provider forçar o *replace* involuntário de recursos críticos nos exemplos.
+
+### 5. Orquestração e Automação (Integração com Makefile Existente)
+- Dado o nosso `Makefile` atual, forneça os *targets* adicionais necessários para envelopar o ciclo de vida. O Makefile deve conter:
+  - `make init`: Deve forçar a atualização e download da **versão mais recente disponível** do provider da Magalu Cloud (`terraform init -upgrade`).
+  - `make lint`: Execução de `tflint` e `terraform fmt -check`.
+  - `make test`: Execução do `terraform test` no módulo raiz.
+  - `make test-examples`: Automação do provisionamento, checagem de idempotência e destruição dos cenários contidos em `examples/`.
+  - `make policy-check`: Avaliação do plano via OPA/Rego.
+
+### 6. Developer Experience (DX) e Módulo User-Friendly
+- Refine a interface do módulo utilizando padrões avançados:
+  - Uso estratégico de `locals` para computar tags globais obrigatórias e nomes de recursos padronizados, minimizando a carga cognitiva do usuário.
+  - Outputs fortemente tipados e descritivos para encadeamento de módulos (Module Composition).
+
+Entregue as respostas em blocos de código limpos e consolidados (`hcl`, `rego`, `bash`), adotando indentação padrão de 2 espaços e foco estritamente técnico, omitindo introduções teóricas.
+
+```
+
+---
+
+### Exemplo de Aplicação Prática do Contrato Bilíngue (`variables.tf`)
+
+Para exemplificar o padrão que o prompt acima vai gerar, veja como fica a estrutura de uma variável com documentação e validação em **en-US** e **pt-BR**:
+
+```hcl
+variable "environment" {
+  type        = string
+  description = "The deployment environment (en-US) / O ambiente de deploy (pt-BR)."
+
+  validation {
+    condition     = contains(["prod", "staging", "dev"], var.environment)
+    error_message = "The environment must be 'prod', 'staging', or 'dev'. / O ambiente deve ser obrigatoriamente: 'prod', 'staging' ou 'dev'."
+  }
+}
+
+```
+
+##################################################################################################
+
+#################################### CHATGPT ##############################################################
+
+
+Segue a versão consolidada e atualizada do prompt, incorporando evolução do módulo Terraform, provider `MagaluCloud/mgc`, cobertura de testes, compatibilidade, UX, internacionalização bilíngue e validações robustas.
+
+Você é um especialista em Terraform, engenharia de plataforma, IaC, providers cloud e módulos reutilizáveis. Sua missão é evoluir este módulo Terraform baseado no provider `MagaluCloud/mgc` garantindo compatibilidade, qualidade, estabilidade operacional e excelente experiência de uso.
+
+# Contexto do Provider
+
+Provider alvo:
+
+* source = "MagaluCloud/mgc"
+* Provider em evolução contínua
+* Possibilidade elevada de breaking changes entre versões 0.x
+* Recursos frequentemente expandidos
+* Necessário suportar novas capabilities rapidamente
+
+Antes de implementar mudanças:
+
+1. Avalie versão atual utilizada.
+2. Avalie última versão disponível.
+3. Gere matriz de compatibilidade.
+4. Identifique mudanças de schema.
+5. Avalie mudanças de autenticação.
+6. Avalie mudanças de comportamento implícitas.
+7. Avalie riscos de state migration.
+8. Avalie impactos em recursos existentes.
+
+# Compatibilidade de Provider
+
+Realize análise detalhada entre versões:
+
+* Recursos adicionados
+* Recursos depreciados
+* Campos removidos
+* Campos renomeados
+* Alterações Required → Optional
+* Alterações Optional → Required
+* Alterações ForceNew
+* Mudanças de comportamento do provider
+* Alterações de defaults
+* Mudanças de autenticação
+* Mudanças regionais
+
+Validar:
+
+* Terraform Core compatibility
+* Provider compatibility
+* State migration risks
+* Drift risks
+* Import compatibility
+* Upgrade path
+* Backward compatibility
+
+Caso exista breaking change:
+
+* Criar migration guide
+* Criar CHANGELOG
+* Adicionar exemplos de upgrade
+* Criar fallback strategy
+* Documentar rollback
+* Gerar matriz antes/depois
+
+# Arquitetura do Módulo
+
+O módulo deve:
+
+* Expor TODOS os parâmetros suportados pelo recurso mgc sempre que tecnicamente viável.
+* Permitir configuração avançada sem prejudicar casos simples.
+* Reduzir quantidade mínima de inputs.
+* Possuir defaults seguros.
+* Minimizar quantidade de variáveis obrigatórias.
+* Priorizar backward compatibility.
+* Priorizar convention over configuration.
+* Ser simples para iniciantes e poderoso para usuários avançados.
+
+Preferir:
+
+* optional()
+* nullable = false quando fizer sentido
+* objetos compostos
+* listas tipadas
+* maps tipados
+* defaults seguros
+* dynamic blocks quando necessário
+* strong typing
+
+Evitar:
+
+* inputs redundantes
+* hardcodes
+* recursos ocultos
+* comportamento implícito não documentado
+* variáveis obrigatórias desnecessárias
+
+# User Experience (User Friendly)
+
+Provisionamento mínimo deve exigir o menor número possível de variáveis.
+
+Objetivo:
+
+Provisionamento simples:
+
+```hcl
+module "resource" {
+  name = "example"
+}
+```
+
+Provisionamento avançado:
+
+```hcl
+module "resource" {
+  # todos parâmetros suportados
+}
+```
+
+Sempre:
+
+* reduzir boilerplate
+* simplificar onboarding
+* fornecer mensagens claras
+* gerar outputs úteis
+* reduzir necessidade de documentação externa
+
+# Internacionalização (i18n)
+
+Toda comunicação voltada ao usuário deve ser obrigatoriamente bilíngue:
+
+Idiomas obrigatórios:
+
+* English (en-US)
+* Português Brasil (pt-BR)
+
+Aplicar obrigatoriamente em:
+
+* README
+* variável description
+* outputs description
+* validation error_message
+* precondition error_message
+* postcondition error_message
+* comentários importantes
+* exemplos
+* troubleshooting
+* migration guides
+* upgrade guides
+* changelog orientado ao usuário
+
+Formato esperado:
+
+```text
+## Description / Descrição
+
+EN-US:
+Description in English.
+
+PT-BR:
+Descrição em português.
+```
+
+Falhar pipeline se:
+
+* descrição existir apenas em um idioma
+* validation possuir somente um idioma
+* precondition possuir somente um idioma
+* documentação estiver parcialmente traduzida
+
+# Variáveis e Validation
+
+Adicionar validation blocks extensivamente.
+
+Validar:
+
+* regiões suportadas
+* nomes válidos
+* ranges numéricos
+* enums
+* tamanhos mínimos/máximos
+* CIDRs
+* IDs
+* formatos específicos do provider
+* parâmetros mutuamente exclusivos
+* dependências condicionais
+* limites do provider
+
+Exemplo:
+
+```hcl
+validation {
+  condition = contains(local.valid_regions, var.region)
+
+  error_message = <<EOT
+EN-US:
+Invalid region.
+
+PT-BR:
+Região inválida.
+EOT
+}
+```
+
+Usar validações sempre que possível.
+
+# Preconditions / Postconditions
+
+Adicionar lifecycle validations extensivamente:
+
+* precondition
+* postcondition
+
+Validar:
+
+* combinações inválidas
+* dependências entre parâmetros
+* limites do provider
+* requisitos mínimos
+* consistência
+* restrições regionais
+
+Exemplo:
+
+```hcl
+precondition {
+  condition = var.disk_size >= 10
+
+  error_message = <<EOT
+EN-US:
+Disk size must be greater than or equal to 10GB.
+
+PT-BR:
+Tamanho do disco deve ser maior ou igual a 10GB.
+EOT
+}
+```
+
+# Testes
+
+Cobertura obrigatória:
+
+## Static Analysis
+
+* terraform fmt
+* terraform validate
+* tflint
+* tfsec
+* trivy
+* checkov
+
+## Functional
+
+Executar:
+
+* terraform init
+* terraform plan
+* terraform apply
+* terraform destroy
+* drift validation
+
+## Upgrade
+
+Executar:
+
+* current version → target version
+* rollback tests
+* import tests
+* state migration tests
+
+## Coverage
+
+Cobrir:
+
+* cenário mínimo
+* cenário completo
+* edge cases
+* entradas inválidas
+* upgrade
+* downgrade
+* rollback
+
+# Exemplos
+
+TODOS os exemplos existentes DEVEM ser provisionados automaticamente.
+
+Validar:
+
+* examples/basic
+* examples/complete
+* examples/*
+* novos exemplos adicionados
+
+Cada exemplo deve executar:
+
+* init
+* validate
+* plan
+* apply
+* assert
+* destroy
+
+Falha em qualquer exemplo = falha do pipeline.
+
+Adicionar novos exemplos caso existam gaps.
+
+# Makefile
+
+Reutilizar Makefile existente.
+
+Adicionar targets quando necessário:
+
+```make
+make init
+make fmt
+make validate
+make lint
+make docs
+make examples
+make security
+make test
+make upgrade-test
+make destroy-test
+make clean
+```
+
+Objetivos:
+
+* evitar duplicidade
+* padronizar execução local
+* padronizar CI/CD
+
+# Pipeline CI/CD
+
+Pipeline deve validar:
+
+* múltiplas versões Terraform
+* múltiplas versões provider
+* examples
+* lint
+* docs
+* security
+* upgrade tests
+* rollback tests
+
+Usar matrix strategy sempre que possível.
+
+# Documentação
+
+Atualizar:
+
+* README
+* Inputs
+* Outputs
+* Examples
+* Upgrade Guide
+* Compatibility Matrix
+* CHANGELOG
+* Known Limitations
+
+Documentar:
+
+* defaults
+* limitações
+* riscos
+* incompatibilidades
+* cenários suportados
+* cenários não suportados
+
+# Entregáveis
+
+Entregar:
+
+1. Problemas encontrados
+2. Compatibilidade avaliada
+3. Breaking changes encontrados
+4. Melhorias implementadas
+5. Evidências de testes
+6. Cobertura obtida
+7. Plano de rollback
+8. Gaps remanescentes
+9. Recomendações futuras
+10. Riscos aceitos
+
+Prioridade:
+
+1. Segurança
+2. Compatibilidade
+3. Experiência do usuário
+4. Estabilidade
+5. Cobertura de testes
+6. Extensibilidade
+
+Objetivo final:
+
+Criar um módulo robusto, fácil de consumir, seguro, altamente testado, resiliente a upgrades do provider `mgc` e preparado para crescimento futuro.
+##################################################################################################
+
+########################################## DEEPSEEK ########################################################
+---
+
+**Prompt (com exigência de bilinguismo en-US/pt-BR):**
+
+Você é um engenheiro de plataforma responsável por evoluir um módulo Terraform que utiliza o provider `MagaluCloud/mgc` (https://registry.terraform.io/providers/MagaluCloud/mgc/latest). O módulo já existe e possui exemplos de uso. Seu objetivo é analisar a compatibilidade com a **última versão disponível** desse provider, melhorar a cobertura de testes, ajustar o `Makefile` existente e tornar o módulo mais amigável, mitigando possíveis breaking changes.
+
+### Requisitos obrigatórios:
+
+1. **Avaliação de compatibilidade do provider**  
+   - Use o comando `make init` (que já deve baixar a versão mais recente do provider) e execute `terraform plan` em todos os exemplos do diretório `examples/`.  
+   - Compare a saída com a versão anterior do provider (se houver) e documente qualquer diferença no plano, especialmente mudanças em atributos computados, remoção de campos ou alterações de comportamento.  
+   - Identifique breaking changes e proponha adaptações no módulo (ex.: uso de `lifecycle` `ignore_changes`, mapeamento de argumentos obsoletos, etc.).
+
+2. **Cobertura de testes**  
+   - Mantenha o `Makefile` com targets para:  
+     - `make init` (terraform init com upgrade)  
+     - `make test` (executa `terraform validate` em todos os exemplos e opcionalmente `terratest` ou `terraform test`)  
+     - `make plan-examples` (roda `terraform plan` em cada exemplo, com validação de saída)  
+   - Garanta que cada recurso gerenciado pelo módulo tenha pelo menos um exemplo que o provisione de fato (não apenas `plan`). Se possível, use um backend remoto efêmero ou um sandbox para `make apply-examples` com destruição automática.
+
+3. **Mitigação de breaking changes e user friendly**  
+   - Para cada recurso do provider que o módulo envolve, exponha **todos os parâmetros possíveis** (conforme documentação oficial do provider).  
+   - Ao mesmo tempo, **não obrigue** o usuário a informar todos eles: defina **valores padrão (default)** inteligentes e documente claramente quais são obrigatórios.  
+   - Use blocos `validation` nas variáveis sempre que possível (ex.: formato de string, ranges numéricos, listas de valores aceitos).  
+   - Use **precondições** (`precondition` blocks dentro dos recursos ou `lifecycle`) para validar relações entre variáveis ou estados do provider antes de criar/atualizar.
+
+4. **Validação provisionando os exemplos existentes**  
+   - Altere o `Makefile` para incluir um target `make validate-examples` que:  
+     1. Execute `terraform init` em cada exemplo.  
+     2. Execute `terraform plan` e salve o output.  
+     3. Opcionalmente (se ambiente seguro), execute `terraform apply -auto-approve` seguido de `terraform destroy` para validar o ciclo de vida completo.  
+   - Registre o sucesso ou falha de cada exemplo. Se falhar, o `make validate-examples` deve retornar erro.
+
+5. **Uso do Makefile existente**  
+   - Mantenha a estrutura atual do `Makefile`, adicionando os targets descritos.  
+   - O target `make init` DEVE garantir o download da versão mais recente do provider `MagaluCloud/mgc` (ex.: usando `terraform init -upgrade` ou forçando `~>` na versão do provider no `required_providers` e executando `make init`).
+
+6. **Idiomas – Comunicação bilíngue (en-US e pt-BR)** – **NOVO REQUISITO**  
+   - Todo o conteúdo legível pelo usuário **deve ser fornecido em inglês (en-US) e português do Brasil (pt-BR)**. Isso inclui:  
+     - O arquivo `README.md` (explicação do módulo, exemplos, como contribuir) – pode ser dois arquivos separados ou um único com seções bilíngues.  
+     - As descrições (`description`) de cada variável no `variables.tf` – use comentários acima da variável ou o argumento `description` com os dois idiomas (ex.: `"en-US: ... | pt-BR: ..."`).  
+     - As mensagens de erro dos blocos `validation` (atributo `error_message`) – devem ser bilíngues ou haver dois blocos de validação distintos (um para cada idioma, mas isso não é suportado nativamente; portanto, use uma string concatenada ou uma mensagem única que contenha ambos os idiomas claramente separados).  
+     - As mensagens de `precondition` (atributo `error_message`) – mesma abordagem: conteúdo em ambos os idiomas.  
+   - **Exemplo de mensagem bilíngue:**  
+     ```hcl
+     error_message = "EN-US: instance name must contain only lowercase letters, numbers, and hyphens. | PT-BR: o nome da instância deve conter apenas letras minúsculas, números e hífens."
+     ```
+   - Para a documentação do módulo (README), forneça seções completas em ambos os idiomas ou um arquivo `README.md` com links para `README.en.md` e `README.pt-br.md`.
+
+### Formato da resposta esperada (a ser entregue por você):
+
+Forneça um **plano de ação** detalhado (lista de passos) e um **patch** das alterações necessárias nos arquivos:
+- `variables.tf` (exemplo de blocos `variable` com `validation` bilíngue e defaults)
+- `main.tf` (exemplo de `resource` com `precondition` bilíngue)
+- `Makefile` (exemplo dos novos targets)
+- `examples/*/main.tf` (exemplo de uso mínimo e completo)
+- `README.md` (estrutura bilíngue sugerida)
+
+Caso o provider `MagaluCloud/mgc` não tenha documentação acessível, utilize como base um recurso hipotético `mgc_virtual_machine`. Aplique os princípios genericamente, mencionando que o desenvolvedor deve substituir pelos argumentos reais do provider.
+
+### Exemplo de trecho esperado (incluindo bilinguismo):
+
+```hcl
+# variables.tf
+variable "instance_name" {
+  description = <<-EOT
+    en-US: Name of the virtual machine instance.
+    pt-BR: Nome da instância de máquina virtual.
+  EOT
+  type        = string
+  default     = "my-vm"
+  validation {
+    condition     = can(regex("^[a-z0-9-]+$", var.instance_name))
+    error_message = "en-US: Name must contain only lowercase letters, numbers, and hyphens. | pt-BR: O nome deve conter apenas letras minúsculas, números e hífens."
+  }
+}
+
+# main.tf
+resource "mgc_virtual_machine" "this" {
+  name = var.instance_name
+  type = var.instance_type
+
+  lifecycle {
+    precondition {
+      condition     = var.instance_type != ""
+      error_message = "en-US: instance_type cannot be empty. | pt-BR: instance_type não pode estar vazio."
+    }
+  }
+}
+```
+
+**Importante:** A documentação do provider não está acessível neste momento. Portanto, você **deve consultar localmente** o schema do provider ou a documentação oficial (https://docs.magalu.cloud) para identificar todos os argumentos disponíveis e seus tipos antes de aplicar as validações e defaults.
+
+---
+
+Este prompt agora atende integralmente à solicitação de incluir comunicação bilíngue (en-US e pt-BR) em README, descrições, validações e precondições.
+
+##################################################################################################

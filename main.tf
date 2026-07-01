@@ -1,93 +1,70 @@
-# Cria o Subnet Pool condicionalmente com base na variável 'create_subnetpool'
-resource "mgc_network_subnetpools" "this" {
-  count = var.create_subnetpool ? 1 : 0
-
-  name        = "${var.vpc_name}-subnetpool"
-  description = coalesce(var.subnetpool_description, "Subnet Pool for ${var.vpc_name}")
-  cidr        = var.vpc_base_cidr
-}
-
-# Determina qual ID de Subnetpool usar: o recém-criado ou um existente
-locals {
-  effective_subnetpool_id = var.create_subnetpool ? mgc_network_subnetpools.this[0].id : var.subnetpool_id
-}
-
-# Cria o recurso principal da VPC
 resource "mgc_network_vpcs" "this" {
-  name        = var.vpc_name
-  description = coalesce(var.vpc_description, "VPC for ${var.vpc_name} environment")
+  count       = var.create ? 1 : 0
+  name        = var.name
+  description = var.description
 }
 
-# Cria as sub-redes PÚBLICAS, uma para cada Zona de Disponibilidade
-resource "mgc_network_vpcs_subnets" "public" {
-  for_each = length(var.public_subnet_cidrs) > 0 ? toset(var.availability_zones) : toset([])
-
-  vpc_id          = mgc_network_vpcs.this.id
-  subnetpool_id   = local.effective_subnetpool_id
-  name            = "${var.vpc_name}-public-${each.key}"
-  description     = "Public subnet for ${var.vpc_name} in AZ ${each.key}"
-  cidr_block      = var.public_subnet_cidrs[index(var.availability_zones, each.key)]
-  availability_zone = each.key
-  ip_version      = "IPv4"
+resource "mgc_network_subnetpools" "this" {
+  for_each    = length(var.subnetpool) > 0 ? { for pool in var.subnetpool : pool.name => pool } : {}
+  name        = each.value.name
+  description = each.value.description
+  cidr        = each.value.cidr
 }
 
-# Cria as sub-redes PRIVADAS, uma para cada Zona de Disponibilidade
-resource "mgc_network_vpcs_subnets" "private" {
-  for_each = length(var.private_subnet_cidrs) > 0 ? toset(var.availability_zones) : toset([])
-
-  vpc_id          = mgc_network_vpcs.this.id
-  subnetpool_id   = local.effective_subnetpool_id
-  name            = "${var.vpc_name}-private-${each.key}"
-  description     = "Private subnet for ${var.vpc_name} in AZ ${each.key}"
-  cidr_block      = var.private_subnet_cidrs[index(var.availability_zones, each.key)]
-  availability_zone = each.key
-  ip_version      = "IPv4"
-}
-
-# Cria os NAT Gateways, um para cada AZ, de forma condicional
-resource "mgc_network_nat_gateway" "this" {
-  for_each = var.create_nat_gateways ? toset(var.availability_zones) : toset([])
-
-  name        = "${var.vpc_name}-nat-gw-${each.key}"
-  description = "NAT Gateway for ${var.vpc_name} in AZ ${each.key}"
-  vpc_id      = mgc_network_vpcs.this.id
-  availability_zone = each.key
-
-  depends_on = [mgc_network_vpcs_subnets.public]
-}
-
-# Cria os Security Groups com a opção 'disable_default_rules'
 resource "mgc_network_security_groups" "this" {
-  for_each = var.security_groups
-
-  name                  = each.key
-  description           = each.value.description
-  disable_default_rules = each.value.disable_default_rules
+  count                 = var.security_group.create ? 1 : 0
+  name                  = "Security Group ${var.name}"
+  description           = "An security group to ${var.security_group.description}"
+  disable_default_rules = false
 }
 
-# Lógica para "achatar" a estrutura de regras para o for_each do recurso de regras
-locals {
-  sg_rules_map = flatten([
-    for sg_name, sg_config in var.security_groups : [
-      for rule_index, rule_config in sg_config.rules : {
-        rule_key           = "${sg_name}.${rule_index}"
-        security_group_key = sg_name
-        rule_data          = rule_config
-      }
-    ]
-  ])
-}
-
-# Cria as regras para cada Security Group correspondente
 resource "mgc_network_security_groups_rules" "this" {
-  for_each = { for item in local.sg_rules_map : item.rule_key => item }
+  depends_on        = [mgc_network_security_groups.this]
+  for_each          = length(var.security_group.rules) > 0 ? { for rule in var.security_group.rules : "${rule.protocol}-${rule.port_min}-${rule.port_max}" => rule } : {}
+  description       = each.value.description
+  direction         = each.value.egress ? "egress" : "ingress"
+  ethertype         = "IPv${each.value.ipv}"
+  port_range_max    = each.value.port_max
+  port_range_min    = each.value.port_min
+  protocol          = each.value.protocol
+  remote_ip_prefix  = each.value.cidr
+  security_group_id = mgc_network_security_groups.this[0].id
+}
 
-  security_group_id = mgc_network_security_groups.this[each.value.security_group_key].id
-  description      = each.value.rule_data.description
-  direction        = each.value.rule_data.direction
-  ethertype        = each.value.rule_data.ethertype
-  port_range_max   = each.value.rule_data.port_range_max
-  port_range_min   = each.value.rule_data.port_range_min
-  protocol         = each.value.rule_data.protocol
-  remote_ip_prefix = each.value.rule_data.remote_ip_prefix
+resource "mgc_network_nat_gateway" "this" {
+  depends_on        = [mgc_network_vpcs.this]
+  for_each          = var.nat_gateway.create ? toset(var.nat_gateway.availability_zone) : toset([])
+  name              = "${var.nat_gateway.name}-${each.key}"
+  vpc_id            = mgc_network_vpcs.this[0].id
+  availability_zone = each.key
+  description       = "${var.nat_gateway.description} in AZ ${each.key}"
+}
+
+locals {
+  subnets_map = {
+    for subnet in var.subnets : subnet.name => subnet
+  }
+}
+
+resource "mgc_network_vpcs_subnets" "this" {
+  # O for_each agora itera sobre o mapa 'local.subnets_map' que acabamos de criar.
+  for_each          = local.subnets_map
+  vpc_id            = mgc_network_vpcs.this[0].id
+  subnetpool_id     = mgc_network_subnetpools.this[each.value.subnetpool_name].id
+  name              = each.value.name
+  cidr_block        = each.value.cidr_block
+  availability_zone = each.value.availability_zone
+  description       = each.value.description
+  dns_nameservers   = each.value.dns_nameservers
+  ip_version        = "IPv${each.value.ip_version}"
+}
+
+
+
+resource "mgc_network_vpcs_route" "this" {
+  for_each = length(var.routes) > 0 ? toset(var.nat_gateway.availability_zone) : toset([])
+  vpc_id           = mgc_network_vpcs.this[0].id
+  port_id          = mgc_network_nat_gateway.this[each.key].id
+  cidr_destination = "0.0.0.0/0"
+  description      = "Route example"
 }

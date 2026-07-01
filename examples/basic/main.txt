@@ -1,0 +1,61 @@
+terraform {
+  required_version = ">= 1.6.0"
+  required_providers {
+    mgc = {
+      source  = "MagaluCloud/mgc"
+      version = ">= 0.51.0"
+    }
+  }
+}
+
+provider "mgc" {
+  region  = "br-se1"
+  api_key = var.api_key
+}
+
+variable "api_key" {
+  description = "The API key for the MGC provider"
+  type        = string
+}
+
+module "vpc_basic" {
+  source = "../../"
+
+  vpc_name        = "example-basic-vpc"
+  vpc_description = "Example VPC created with basic configuration"
+
+  create_subnetpool = true
+  subnetpool_name   = "example-subnetpool"
+  subnetpool_cidr   = "10.0.0.0/16"
+
+  subnets = {
+    public_a = {
+      name              = "example-subnet-public-a"
+      cidr_block        = "10.0.1.0/24"
+      availability_zone = "br-se1-a"
+    }
+    private_a = {
+      name              = "example-subnet-private-a"
+      cidr_block        = "10.0.2.0/24"
+      availability_zone = "br-se1-a"
+    }
+  }
+
+  create_nat_gateway = true
+  enable_routes = true
+  availability_zone  = "br-se1-a"
+
+   route = {
+     cidr_destination = "0.0.0.0/0"
+     port_id          = "00"
+     description      = "Default route to the internet"
+  }
+}
+
+output "vpc_id" {
+  value = module.vpc_basic.vpc_id
+}
+
+output "subnet_ids" {
+  value = module.vpc_basic.subnet_ids
+}
