@@ -159,7 +159,7 @@ This module was created and maintained by the community. If you want to help, se
 
 | Name | Version |
 |------|---------|
-| <a name="provider_mgc"></a> [mgc](#provider\_mgc) | 0.56.0 |
+| <a name="provider_mgc"></a> [mgc](#provider\_mgc) | >= 0.56.0 |
 
 ## Modules
 
