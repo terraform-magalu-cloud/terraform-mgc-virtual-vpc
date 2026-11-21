@@ -10,7 +10,13 @@ on:
       - '**/*.tpl'
       - '**/*.py'
       - '**/*.tf'
+      - '.github/workflows/release.yaml'
       - '.github/workflows/release.yml'
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
 
 jobs:
   release:
@@ -22,8 +28,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          persist-credentials: false
           fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Release
         uses: cycjimmy/semantic-release-action@v4
@@ -34,4 +40,4 @@ jobs:
             @semantic-release/git@10.0.1
             conventional-changelog-conventionalcommits@7.0.2
         env:
-          GITHUB_TOKEN: ${{ secrets.SEMANTIC_RELEASE_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
