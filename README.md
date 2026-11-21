@@ -1,9 +1,13 @@
-<!-- BEGIN_TF_DOCS -->
 <img title="Magalu Cloud" alt="Logo da Magalu Cloud" src="https://raw.githubusercontent.com/terraform-magalu-cloud/.github/61d26ff88c3d74c97d46c0957afd36894b8bbed1/profile/img/magalu.png" width="100" height="100">  <img title="Terraform" alt="Logo do Terraform" src="https://raw.githubusercontent.com/terraform-magalu-cloud/.github/61d26ff88c3d74c97d46c0957afd36894b8bbed1/profile/img/terraform.png" width="100" height="100">
 
 # Terraform Module: Magalu Cloud VPC (`terraform-mgc-virtual-vpc`)
 
-Módulo Terraform para provisionamento, orquestração e gerenciamento confiável e versátil de **VPC (Virtual Private Cloud)** e seus componentes de rede na **Magalu Cloud (MGC)**.
+[![Release](https://img.shields.io/badge/release-v1.0.0-blue.svg)](https://github.com/terraform-magalu-cloud/terraform-mgc-virtual-vpc/releases)
+[![Terraform](https://img.shields.io/badge/Terraform-%3E%3D1.5.0-623CE4.svg)](https://www.terraform.io/)
+[![Magalu Cloud](https://img.shields.io/badge/Provider%20MGC-%3E%3D0.56.0-0086FF.svg)](https://registry.terraform.io/providers/MagaluCloud/mgc/latest)
+[![License](https://img.shields.io/badge/License-Apache%202.0-green.svg)](LICENSE)
+
+Módulo Terraform oficial da comunidade para provisionamento, orquestração e gerenciamento confiável e versátil de **VPC (Virtual Private Cloud)** e seus componentes de rede na **Magalu Cloud (MGC)**.
 
 ## Recursos Suportados
 
@@ -29,7 +33,8 @@ Veja o código executável completo em [examples/simple](examples/simple):
 
 ```terraform
 module "vpc" {
-  source = "terraform-magalu-cloud/virtual-vpc/mgc" # ou caminho local / git
+  source  = "terraform-magalu-cloud/virtual-vpc/mgc"
+  version = "1.0.0"
 
   name        = "my-app-vpc"
   description = "VPC para aplicacao principal"
@@ -60,7 +65,8 @@ Veja o código executável completo em [examples/complete](examples/complete):
 
 ```terraform
 module "vpc" {
-  source = "terraform-magalu-cloud/virtual-vpc/mgc"
+  source  = "terraform-magalu-cloud/virtual-vpc/mgc"
+  version = "1.0.0"
 
   name        = "production-vpc"
   description = "VPC de producao com NAT Gateway e Security Groups"
@@ -138,18 +144,22 @@ make fmt
 make validate
 ```
 
+## Summary
+This module was created and maintained by the community. If you want to help, see how to do this by accessing the repository:
+[terraform-magalu-cloud/how-can-help](https://github.com/terraform-magalu-cloud/how-can-help)
+
 ## Requirements
 
 | Name | Version |
-|------|---------|
-| <a name="requirement_terraform"></a> [terraform](#requirement_terraform) | >= 1.5.0 |
-| <a name="requirement_mgc"></a> [mgc](#requirement_mgc) | >= 0.56.0 |
+| ---- | ------- |
+| <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.5.0 |
+| <a name="requirement_mgc"></a> [mgc](#requirement\_mgc) | >= 0.56.0 |
 
 ## Providers
 
 | Name | Version |
-|------|---------|
-| <a name="provider_mgc"></a> [mgc](#provider_mgc) | >= 0.56.0 |
+| ---- | ------- |
+| <a name="provider_mgc"></a> [mgc](#provider\_mgc) | 0.56.0 |
 
 ## Modules
 
@@ -158,7 +168,7 @@ No modules.
 ## Resources
 
 | Name | Type |
-|------|------|
+| ---- | ---- |
 | [mgc_network_nat_gateway.this](https://registry.terraform.io/providers/MagaluCloud/mgc/latest/docs/resources/network_nat_gateway) | resource |
 | [mgc_network_public_ips.this](https://registry.terraform.io/providers/MagaluCloud/mgc/latest/docs/resources/network_public_ips) | resource |
 | [mgc_network_security_groups.this](https://registry.terraform.io/providers/MagaluCloud/mgc/latest/docs/resources/network_security_groups) | resource |
@@ -173,55 +183,50 @@ No modules.
 ## Inputs
 
 | Name | Description | Type | Default | Required |
-|------|-------------|------|---------|:--------:|
-| <a name="input_name"></a> [name](#input_name) | The name of the VPC. | `string` | n/a | yes |
-| <a name="input_create"></a> [create](#input_create) | Defines whether resources in this module will be created. | `bool` | `true` | no |
-| <a name="input_create_subnetpool"></a> [create_subnetpool](#input_create_subnetpool) | Defines whether a dedicated Subnet Pool should be created for this VPC. | `bool` | `true` | no |
-| <a name="input_default_dns_nameservers"></a> [default_dns_nameservers](#input_default_dns_nameservers) | Default DNS nameservers for subnets if not specified individually. | `list(string)` | <pre>[<br>  "8.8.8.8",<br>  "8.8.4.4"<br>]</pre> | no |
-| <a name="input_description"></a> [description](#input_description) | The description of the VPC. Must only contain letters (A-Z, a-z), numbers (0-9), spaces, and hyphens (-). | `string` | `null` | no |
-| <a name="input_enable_nat_gateway"></a> [enable_nat_gateway](#input_enable_nat_gateway) | Defines whether to create a default NAT Gateway for the VPC. | `bool` | `false` | no |
-| <a name="input_nat_gateway_description"></a> [nat_gateway_description](#input_nat_gateway_description) | Description of the default NAT Gateway. | `string` | `null` | no |
-| <a name="input_nat_gateway_name"></a> [nat_gateway_name](#input_nat_gateway_name) | Name of the default NAT Gateway. If null and enable_nat_gateway is true, defaults to '<name>-nat-gateway'. | `string` | `null` | no |
-| <a name="input_nat_gateway_zone"></a> [nat_gateway_zone](#input_nat_gateway_zone) | Availability zone for the default NAT Gateway (e.g. 'br-ne1-a'). If null, falls back to the availability zone of the first configured subnet. | `string` | `null` | no |
-| <a name="input_nat_gateways"></a> [nat_gateways](#input_nat_gateways) | Map of NAT Gateways to create within the VPC. If provided, takes precedence over enable_nat_gateway single gateway creation. | <pre>map(object({<br>    name              = optional(string)<br>    description       = optional(string)<br>    availability_zone = optional(string)<br>  }))</pre> | `{}` | no |
-| <a name="input_public_ips"></a> [public_ips](#input_public_ips) | Map of public IPs to allocate for this VPC. | <pre>map(object({<br>    description = optional(string)<br>  }))</pre> | `{}` | no |
-| <a name="input_routes"></a> [routes](#input_routes) | Map of custom routes to add to the VPC route table (e.g. for VPC peering or network ports). | <pre>map(object({<br>    cidr_destination = string<br>    description      = optional(string)<br>    peering_id       = optional(string)<br>    port_id          = optional(string)<br>  }))</pre> | `{}` | no |
-| <a name="input_security_groups"></a> [security_groups](#input_security_groups) | Map of security groups and their associated rules to create in the VPC. | <pre>map(object({<br>    name                  = optional(string)<br>    description           = optional(string)<br>    disable_default_rules = optional(bool, false)<br>    rules = optional(map(object({<br>      description      = optional(string)<br>      direction        = string<br>      ethertype        = optional(string, "IPv4")<br>      port_range_min   = optional(number)<br>      port_range_max   = optional(number)<br>      protocol         = optional(string, "tcp")<br>      remote_ip_prefix = optional(string, "0.0.0.0/0")<br>    })), {})<br>  }))</pre> | `{}` | no |
-| <a name="input_subnetpool_cidr"></a> [subnetpool_cidr](#input_subnetpool_cidr) | The CIDR block of the Subnet Pool. | `string` | `"10.0.0.0/16"` | no |
-| <a name="input_subnetpool_description"></a> [subnetpool_description](#input_subnetpool_description) | The description of the Subnet Pool. If null and create_subnetpool is true, defaults to 'Subnet pool for <name>'. | `string` | `null` | no |
-| <a name="input_subnetpool_id"></a> [subnetpool_id](#input_subnetpool_id) | An existing Subnet Pool ID to use when create_subnetpool is false. | `string` | `null` | no |
-| <a name="input_subnetpool_name"></a> [subnetpool_name](#input_subnetpool_name) | The name of the Subnet Pool. If null and create_subnetpool is true, defaults to '<name>-subnetpool'. | `string` | `null` | no |
-| <a name="input_subnets"></a> [subnets](#input_subnets) | Map of subnets to create within the VPC. Key is used as subnet identifier. | <pre>map(object({<br>    name              = optional(string)<br>    cidr_block        = string<br>    ip_version        = optional(string, "IPv4")<br>    availability_zone = optional(string)<br>    description       = optional(string)<br>    dns_nameservers   = optional(list(string))<br>    subnetpool_id     = optional(string)<br>  }))</pre> | `{}` | no |
-| <a name="input_tags"></a> [tags](#input_tags) | Optional map of tags to attach to the VPC resource. | `map(string)` | `{}` | no |
-| <a name="input_use_default_subnetpool"></a> [use_default_subnetpool](#input_use_default_subnetpool) | Whether to look up and use the tenant's default Subnet Pool if create_subnetpool is false and subnetpool_id is null. | `bool` | `false` | no |
+| ---- | ----------- | ---- | ------- | :------: |
+| <a name="input_name"></a> [name](#input\_name) | The name of the VPC. | `string` | n/a | yes |
+| <a name="input_create"></a> [create](#input\_create) | Defines whether resources in this module will be created. | `bool` | `true` | no |
+| <a name="input_create_subnetpool"></a> [create\_subnetpool](#input\_create\_subnetpool) | Defines whether a dedicated Subnet Pool should be created for this VPC. | `bool` | `true` | no |
+| <a name="input_default_dns_nameservers"></a> [default\_dns\_nameservers](#input\_default\_dns\_nameservers) | Default DNS nameservers for subnets if not specified individually. | `list(string)` | <pre>[<br/>  "8.8.8.8",<br/>  "8.8.4.4"<br/>]</pre> | no |
+| <a name="input_description"></a> [description](#input\_description) | The description of the VPC. Must only contain letters (A-Z, a-z), numbers (0-9), spaces, and hyphens (-). | `string` | `null` | no |
+| <a name="input_enable_nat_gateway"></a> [enable\_nat\_gateway](#input\_enable\_nat\_gateway) | Defines whether to create a default NAT Gateway for the VPC. | `bool` | `false` | no |
+| <a name="input_nat_gateway_description"></a> [nat\_gateway\_description](#input\_nat\_gateway\_description) | Description of the default NAT Gateway. | `string` | `null` | no |
+| <a name="input_nat_gateway_name"></a> [nat\_gateway\_name](#input\_nat\_gateway\_name) | Name of the default NAT Gateway. If null and enable\_nat\_gateway is true, defaults to '<name>-nat-gateway'. | `string` | `null` | no |
+| <a name="input_nat_gateway_zone"></a> [nat\_gateway\_zone](#input\_nat\_gateway\_zone) | Availability zone for the default NAT Gateway (e.g. 'br-ne1-a'). If null, falls back to the availability zone of the first configured subnet. | `string` | `null` | no |
+| <a name="input_nat_gateways"></a> [nat\_gateways](#input\_nat\_gateways) | Map of NAT Gateways to create within the VPC. If provided, takes precedence over enable\_nat\_gateway single gateway creation. | <pre>map(object({<br/>    name              = optional(string)<br/>    description       = optional(string)<br/>    availability_zone = optional(string)<br/>  }))</pre> | `{}` | no |
+| <a name="input_public_ips"></a> [public\_ips](#input\_public\_ips) | Map of public IPs to allocate for this VPC. | <pre>map(object({<br/>    description = optional(string)<br/>  }))</pre> | `{}` | no |
+| <a name="input_routes"></a> [routes](#input\_routes) | Map of custom routes to add to the VPC route table (e.g. for VPC peering or network ports). | <pre>map(object({<br/>    cidr_destination = string<br/>    description      = optional(string)<br/>    peering_id       = optional(string)<br/>    port_id          = optional(string)<br/>  }))</pre> | `{}` | no |
+| <a name="input_security_groups"></a> [security\_groups](#input\_security\_groups) | Map of security groups and their associated rules to create in the VPC. | <pre>map(object({<br/>    name                  = optional(string)<br/>    description           = optional(string)<br/>    disable_default_rules = optional(bool, false)<br/>    rules = optional(map(object({<br/>      description      = optional(string)<br/>      direction        = string<br/>      ethertype        = optional(string, "IPv4")<br/>      port_range_min   = optional(number)<br/>      port_range_max   = optional(number)<br/>      protocol         = optional(string, "tcp")<br/>      remote_ip_prefix = optional(string, "0.0.0.0/0")<br/>    })), {})<br/>  }))</pre> | `{}` | no |
+| <a name="input_subnetpool_cidr"></a> [subnetpool\_cidr](#input\_subnetpool\_cidr) | The CIDR block of the Subnet Pool. | `string` | `"10.0.0.0/16"` | no |
+| <a name="input_subnetpool_description"></a> [subnetpool\_description](#input\_subnetpool\_description) | The description of the Subnet Pool. If null and create\_subnetpool is true, defaults to 'Subnet pool for <name>'. | `string` | `null` | no |
+| <a name="input_subnetpool_id"></a> [subnetpool\_id](#input\_subnetpool\_id) | An existing Subnet Pool ID to use when create\_subnetpool is false. | `string` | `null` | no |
+| <a name="input_subnetpool_name"></a> [subnetpool\_name](#input\_subnetpool\_name) | The name of the Subnet Pool. If null and create\_subnetpool is true, defaults to '<name>-subnetpool'. | `string` | `null` | no |
+| <a name="input_subnets"></a> [subnets](#input\_subnets) | Map of subnets to create within the VPC. Key is used as subnet identifier. | <pre>map(object({<br/>    name              = optional(string)<br/>    cidr_block        = string<br/>    ip_version        = optional(string, "IPv4")<br/>    availability_zone = optional(string)<br/>    description       = optional(string)<br/>    dns_nameservers   = optional(list(string))<br/>    subnetpool_id     = optional(string)<br/>  }))</pre> | `{}` | no |
+| <a name="input_tags"></a> [tags](#input\_tags) | Optional map of tags to attach to the VPC resource. | `map(string)` | `{}` | no |
+| <a name="input_use_default_subnetpool"></a> [use\_default\_subnetpool](#input\_use\_default\_subnetpool) | Whether to look up and use the tenant's default Subnet Pool if create\_subnetpool is false and subnetpool\_id is null. | `bool` | `false` | no |
 
 ## Outputs
 
 | Name | Description |
-|------|-------------|
-| <a name="output_nat_gateway_ids"></a> [nat_gateway_ids](#output_nat_gateway_ids) | Map of NAT Gateway keys to their respective IDs. |
-| <a name="output_nat_gateways"></a> [nat_gateways](#output_nat_gateways) | Map of all NAT Gateway resource objects created. |
-| <a name="output_public_ip_addresses"></a> [public_ip_addresses](#output_public_ip_addresses) | Map of Public IP keys to their respective allocated IP addresses. |
-| <a name="output_public_ip_ids"></a> [public_ip_ids](#output_public_ip_ids) | Map of Public IP keys to their respective IDs. |
-| <a name="output_public_ips"></a> [public_ips](#output_public_ips) | Map of all Public IP resource objects created. |
-| <a name="output_route_ids"></a> [route_ids](#output_route_ids) | Map of Route keys to their respective IDs. |
-| <a name="output_routes"></a> [routes](#output_routes) | Map of all Route resource objects created. |
-| <a name="output_security_group_ids"></a> [security_group_ids](#output_security_group_ids) | Map of Security Group keys to their respective IDs. |
-| <a name="output_security_group_rules"></a> [security_group_rules](#output_security_group_rules) | Map of all Security Group Rule resource objects created. |
-| <a name="output_security_groups"></a> [security_groups](#output_security_groups) | Map of all Security Group resource objects created. |
-| <a name="output_subnet_cidr_blocks"></a> [subnet_cidr_blocks](#output_subnet_cidr_blocks) | Map of subnet keys to their respective CIDR blocks. |
-| <a name="output_subnet_ids"></a> [subnet_ids](#output_subnet_ids) | Map of subnet keys to their respective IDs. |
-| <a name="output_subnetpool"></a> [subnetpool](#output_subnetpool) | The full Subnet Pool resource object if created. |
-| <a name="output_subnetpool_cidr"></a> [subnetpool_cidr](#output_subnetpool_cidr) | The CIDR block of the Subnet Pool if created by this module. |
-| <a name="output_subnetpool_id"></a> [subnetpool_id](#output_subnetpool_id) | The ID of the Subnet Pool used (created or referenced). |
-| <a name="output_subnets"></a> [subnets](#output_subnets) | Map of all subnet resource objects created in the VPC. |
-| <a name="output_tags"></a> [tags](#output_tags) | The tag attachment resource if tags were provided. |
-| <a name="output_vpc"></a> [vpc](#output_vpc) | The full VPC resource object. |
-| <a name="output_vpc_description"></a> [vpc_description](#output_vpc_description) | The description of the VPC. |
-| <a name="output_vpc_id"></a> [vpc_id](#output_vpc_id) | The ID of the VPC. |
-| <a name="output_vpc_name"></a> [vpc_name](#output_vpc_name) | The name of the VPC. |
-
-## Summary
-This module was created and maintained by the community. If you want to help, see how to do this by accessing the repository:
-[terraform-magalu-cloud/how-can-help](https://github.com/terraform-magalu-cloud/how-can-help)
-<!-- END_TF_DOCS -->
+| ---- | ----------- |
+| <a name="output_nat_gateway_ids"></a> [nat\_gateway\_ids](#output\_nat\_gateway\_ids) | Map of NAT Gateway keys to their respective IDs. |
+| <a name="output_nat_gateways"></a> [nat\_gateways](#output\_nat\_gateways) | Map of all NAT Gateway resource objects created. |
+| <a name="output_public_ip_addresses"></a> [public\_ip\_addresses](#output\_public\_ip\_addresses) | Map of Public IP keys to their respective allocated IP addresses. |
+| <a name="output_public_ip_ids"></a> [public\_ip\_ids](#output\_public\_ip\_ids) | Map of Public IP keys to their respective IDs. |
+| <a name="output_public_ips"></a> [public\_ips](#output\_public\_ips) | Map of all Public IP resource objects created. |
+| <a name="output_route_ids"></a> [route\_ids](#output\_route\_ids) | Map of Route keys to their respective IDs. |
+| <a name="output_routes"></a> [routes](#output\_routes) | Map of all Route resource objects created. |
+| <a name="output_security_group_ids"></a> [security\_group\_ids](#output\_security\_group\_ids) | Map of Security Group keys to their respective IDs. |
+| <a name="output_security_group_rules"></a> [security\_group\_rules](#output\_security\_group\_rules) | Map of all Security Group Rule resource objects created. |
+| <a name="output_security_groups"></a> [security\_groups](#output\_security\_groups) | Map of all Security Group resource objects created. |
+| <a name="output_subnet_cidr_blocks"></a> [subnet\_cidr\_blocks](#output\_subnet\_cidr\_blocks) | Map of subnet keys to their respective CIDR blocks. |
+| <a name="output_subnet_ids"></a> [subnet\_ids](#output\_subnet\_ids) | Map of subnet keys to their respective IDs. |
+| <a name="output_subnetpool"></a> [subnetpool](#output\_subnetpool) | The full Subnet Pool resource object if created. |
+| <a name="output_subnetpool_cidr"></a> [subnetpool\_cidr](#output\_subnetpool\_cidr) | The CIDR block of the Subnet Pool if created by this module. |
+| <a name="output_subnetpool_id"></a> [subnetpool\_id](#output\_subnetpool\_id) | The ID of the Subnet Pool used (created or referenced). |
+| <a name="output_subnets"></a> [subnets](#output\_subnets) | Map of all subnet resource objects created in the VPC. |
+| <a name="output_tags"></a> [tags](#output\_tags) | The tag attachment resource if tags were provided. |
+| <a name="output_vpc"></a> [vpc](#output\_vpc) | The full VPC resource object. |
+| <a name="output_vpc_description"></a> [vpc\_description](#output\_vpc\_description) | The description of the VPC. |
+| <a name="output_vpc_id"></a> [vpc\_id](#output\_vpc\_id) | The ID of the VPC. |
+| <a name="output_vpc_name"></a> [vpc\_name](#output\_vpc\_name) | The name of the VPC. |
