@@ -2,6 +2,14 @@
 
 Todas as alterações notáveis deste projeto serão documentadas neste arquivo.
 
+## 1.0.0 (2026-11-21)
+
+
+### Features
+
+* add docs target to Makefile and update README documentation ([01a3b0f](https://github.com/terraform-magalu-cloud/terraform-mgc-virtual-vpc/commit/01a3b0f212ee23ea712d7d1366ec1af4adf93a84))
+* add github workflows, makefile, tests, and examples for virtual vpc module ([4f3b507](https://github.com/terraform-magalu-cloud/terraform-mgc-virtual-vpc/commit/4f3b507b4c22e08e9d81cfe309e9f3ca4f9bea77))
+
 ## [1.0.0] - 2026-11-20
 
 ### Funcionalidades
