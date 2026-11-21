@@ -1,0 +1,52 @@
+name: Telegram Notification
+
+on:
+  workflow_dispatch:
+  release:
+    types: [published]
+
+jobs:
+  notify:
+    name: Send Telegram Message
+    runs-on: ubuntu-latest
+    steps:
+      - name: Format Release Notes
+        id: prep
+        run: |
+          python3 -c '
+          import os, html
+
+          raw_body = os.environ.get("RELEASE_BODY", "").strip()
+          if not raw_body:
+              clean_body = "Disparo manual ou sem notas associadas."
+          else:
+              escaped = html.escape(raw_body)
+              # Limita a 1500 caracteres para garantir que cabe no Telegram
+              if len(escaped) > 1500:
+                  escaped = escaped[:1500].rsplit("\n", 1)[0] + "\n\n<i>... e mais no link abaixo.</i>"
+              clean_body = escaped
+
+          with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+              f.write("notes<<EOF\n" + clean_body + "\nEOF\n")
+          '
+        env:
+          RELEASE_BODY: ${{ github.event.release.body }}
+
+      - name: Notify Telegram
+        uses: appleboy/telegram-action@v1.0.1
+        with:
+          to: ${{ secrets.TELEGRAM_TO }}
+          token: ${{ secrets.TELEGRAM_TOKEN }}
+          format: html
+          disable_web_page_preview: true # Evita que um card gigante do GitHub polua o chat
+          message: |
+            🚀 <b>NOVA VERSÃO PUBLICADA!</b>
+
+            📦 <b>Projeto:</b> <code>${{ github.repository }}</code>
+            🏷️ <b>Versão:</b> <code>${{ github.event.release.tag_name || 'Manual / Teste' }}</code>
+            👤 <b>Autor:</b> <a href="${{ github.event.release.author.html_url || format('{0}/{1}', github.server_url, github.actor) }}">${{ github.event.release.author.login || github.actor }}</a>
+
+            📝 <b>O que há de novo:</b>
+            <blockquote>${{ steps.prep.outputs.notes }}</blockquote>
+
+            🔗 <a href="${{ github.event.release.html_url || format('{0}/{1}/releases', github.server_url, github.repository) }}">Visualizar Release completa no GitHub</a>
