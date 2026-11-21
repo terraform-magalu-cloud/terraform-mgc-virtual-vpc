@@ -32,6 +32,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Release
+        id: semantic
         uses: cycjimmy/semantic-release-action@v4
         with:
           semantic_version: 23.0.8
@@ -41,3 +42,45 @@ jobs:
             conventional-changelog-conventionalcommits@7.0.2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Format Release Notes
+        if: steps.semantic.outputs.new_release_published == 'true'
+        id: prep
+        run: |
+          python3 -c '
+          import os, html
+
+          raw_body = os.environ.get("RELEASE_BODY", "").strip()
+          if not raw_body:
+              clean_body = "Versão publicada com sucesso."
+          else:
+              escaped = html.escape(raw_body)
+              if len(escaped) > 1500:
+                  escaped = escaped[:1500].rsplit("\n", 1)[0] + "\n\n<i>... e mais no link abaixo.</i>"
+              clean_body = escaped
+
+          with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+              f.write("notes<<EOF\n" + clean_body + "\nEOF\n")
+          '
+        env:
+          RELEASE_BODY: ${{ steps.semantic.outputs.new_release_notes }}
+
+      - name: Notify Telegram
+        if: steps.semantic.outputs.new_release_published == 'true'
+        uses: appleboy/telegram-action@v1.0.1
+        with:
+          to: ${{ secrets.TELEGRAM_TO }}
+          token: ${{ secrets.TELEGRAM_TOKEN }}
+          format: html
+          disable_web_page_preview: true
+          message: |
+            🚀 <b>NOVA VERSÃO PUBLICADA!</b>
+
+            📦 <b>Projeto:</b> <code>${{ github.repository }}</code>
+            🏷️ <b>Versão:</b> <code>v${{ steps.semantic.outputs.new_release_version }}</code>
+            👤 <b>Autor:</b> <a href="${{ github.server_url }}/${{ github.actor }}">${{ github.actor }}</a>
+
+            📝 <b>O que há de novo:</b>
+            <blockquote>${{ steps.prep.outputs.notes }}</blockquote>
+
+            🔗 <a href="${{ github.server_url }}/${{ github.repository }}/releases/tag/v${{ steps.semantic.outputs.new_release_version }}">Visualizar Release completa no GitHub</a>
