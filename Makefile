@@ -1,12 +1,17 @@
-.PHONY: all fmt validate test test-verbose clean help
+.PHONY: all fmt docs validate test test-verbose clean help
 
 # Default target
-all: fmt validate test
+all: fmt docs validate test
 
 # Check or apply formatting
 fmt:
 	@echo "==> Formatting Terraform files..."
 	terraform fmt -recursive
+
+# Generate documentation with terraform-docs
+docs:
+	@echo "==> Generating documentation with terraform-docs..."
+	terraform-docs .
 
 # Validate configurations
 validate:
@@ -38,8 +43,9 @@ help:
 	@echo "Usage: make [target]"
 	@echo ""
 	@echo "Targets:"
-	@echo "  all          Run fmt, validate, and test"
+	@echo "  all          Run fmt, docs, validate, and test"
 	@echo "  fmt          Format Terraform code"
+	@echo "  docs         Generate README.md using terraform-docs"
 	@echo "  validate     Validate root module and all examples"
 	@echo "  test         Run unit tests using terraform test"
 	@echo "  test-verbose Run unit tests with detailed output"
